@@ -16,7 +16,7 @@ app.use(cors())
 
 function getFindMyData() {
     try {
-        const items_data = fs.readFileSync(process.env.HOME + '/Library/Caches/com.apple.findmy.fmipcore/Items.data', 'utf8');
+        const items_data = fs.readFileSync('Items.data', 'utf8');
         let parsed_data = JSON.parse(items_data);
         let items_filtered_data = parsed_data
             .filter(item => item.productType && item.productType.type === "b389" &&
@@ -43,7 +43,7 @@ function getFindMyData() {
                 }
             });
 
-        const devices_data = fs.readFileSync(process.env.HOME + '/Library/Caches/com.apple.findmy.fmipcore/Devices.data', 'utf8');
+        const devices_data = fs.readFileSync('Devices.data', 'utf8');
         parsed_data = JSON.parse(devices_data)
         let devices_filtered_data = parsed_data
         .filter(device => device.deviceModel && device.name && device.batteryLevel

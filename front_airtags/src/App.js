@@ -92,19 +92,6 @@ class App extends Component {
 
       <div>
         <div class="sidebar">
-        <div style={{
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            gap: 10,
-            paddingTop: 10,
-            paddingBottom: 10,
-          }}
-            onClick={() => window.open('https://github.com/DylanAkp/AirtagsAnywhere')}>
-            <img src="images/logo.png" alt="AirtagsAnywhere Logo"></img> <span style={{
-              fontSize: 25
-            }}>AirtagsAnywhere</span>
-          </div>
           <div class="airlist">
             {this.state.data.map(air => (
               <div class="button"
