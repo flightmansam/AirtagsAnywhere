@@ -4,21 +4,37 @@ import React, { Component } from "react";
 import MarkerClusterGroup from 'react-leaflet-cluster'
 import { MapContainer, TileLayer, Marker, Popup, Tooltip } from 'react-leaflet'
 import L from "leaflet";
-import twemoji from "twemoji";
 import {centroid, lineString, bbox} from '@turf/turf'
 import ModeNightIcon from '@mui/icons-material/ModeNight';
 import CachedIcon from '@mui/icons-material/Cached';
 import IconButton from '@mui/material/IconButton';
 import BatteryFullIcon from '@mui/icons-material/BatteryFull';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
-import DirectionsIcon from '@mui/icons-material/Directions';
 import StraightenIcon from '@mui/icons-material/Straighten';
+import TrackChangesIcon from '@mui/icons-material/TrackChanges';
 import configData from "./config.json";
+import blackSvg from "./black.svg"
+import whiteSvg from "./white.svg"
 var ago = require('s-ago');
 
 function refreshPage() {
   window.location.reload(false);
 }
+
+const BlackIcon = L.icon({
+  iconUrl: blackSvg,
+  iconSize: 80,
+  // shadowUrl: blackSvg,
+  // shadowAnchor: [36, 36]
+})
+
+const WhiteIcon = L.icon({
+  iconUrl: whiteSvg,
+  iconSize: 80,
+  // shadowUrl: blackSvg,
+  // shadowAnchor: [36, 36]
+})
+
 
 class App extends Component {
   constructor(props) {
@@ -27,6 +43,7 @@ class App extends Component {
     if (width > 768) {
       this.state = {
         data: [],
+        watchedItems: [],
         colorMode: "light",
         collapsed: false,
         map: null,
@@ -34,6 +51,7 @@ class App extends Component {
     } else {
       this.state = {
         data: [],
+        watchedItems: [],
         colorMode: "light",
         collapsed: true,
         map: null
@@ -60,10 +78,22 @@ class App extends Component {
     }
   }
 
+  onTrackedClick(sn) {
+    fetch(`http://${configData.SERVER_IP}:3890/watch/toggle/` + sn)
+
+    // fetch(`http://${configData.SERVER_IP}:3890/watch`)
+    // .then(res => res.json())  
+    // .then(json => this.setState({watchedItems: json}))
+  }
+
   componentDidMount() {
     fetch(`http://${configData.SERVER_IP}:3890/json`)
       .then(res => res.json())
       .then(json => this.setState({ data: json }));
+
+    fetch(`http://${configData.SERVER_IP}:3890/watch`)
+      .then(res => res.json())  
+      .then(json => this.setState({watchedItems: json}))
   }
 
   centerPosOfData() {
@@ -102,6 +132,7 @@ class App extends Component {
                 <center><span style={{ fontSize: 25 }}>{air.emote}</span> <span style={{ fontSize: 20 }}>{air.name}</span> | <BatteryFullIcon fontSize='small' style={{ position: 'relative', top: '5px' }} /> {air.battery}% <br />
                   <AccessTimeIcon fontSize="small" style={{ position: 'relative', top: '5px' }} /> {ago(new Date(air.timeStamp))}<br />
                   <StraightenIcon fontSize="small" style={{ position: 'relative', top: '5px' }} /> Last 24Hrs: {Math.round(air.distance24Hours)}m {air.distanceSinceLastReport > 0 ? `(${Math.round(air.distanceSinceLastReport)}m since last report)` : ''}<br />
+                  {this.state.watchedItems.includes(air.sn) ?  <TrackChangesIcon />: ""}
                 </center>
               </div>
             ))}
@@ -142,38 +173,24 @@ class App extends Component {
           />
 
           <MarkerClusterGroup
-            iconCreateFunction={() => L.icon({
-              iconUrl: /src="([^\"]+)"/.exec(twemoji.parse('⚪️'))[1],
-              iconSize: 50,
-              shadowUrl: /src="([^\"]+)"/.exec(twemoji.parse('⚫️'))[1],
-              shadowAnchor: [36, 36]
-            })}
+            iconCreateFunction={() => WhiteIcon}
             spiderfyOnMaxZoom={true}
+            spiderfyDistanceMultiplier={3}
             showCoverageOnHover={false}
             maxClusterRadius={100}>
               
           {this.state.data.map(air => (
-            <Marker icon={L.icon({
-              iconUrl: /src="([^\"]+)"/.exec(twemoji.parse('⚫️'))[1],
-              iconSize: 50,
-              shadowUrl: /src="([^\"]+)"/.exec(twemoji.parse('⚫️'))[1],
-              shadowAnchor: [36, 36]
-            })}
+            <Marker icon={BlackIcon}
           
               position={air.coords}>
               <Popup id={air.sn}>
                 <center>
                   <span style={{ fontSize: 25 }}>{air.emote} {air.name} </span> <br />
-                  <div class="button" endIcon={<DirectionsIcon />}
-                    style={{
-                      margin: 10,
-                      borderRadius: 30,
-                      textTransform: 'none',
-                      fontFamily: 'Roboto'
-                    }}
+
+                  <div class="button" endIcon={<TrackChangesIcon />}
                     variant="contained" size="small"
-                    onClick={() => window.open('https://www.google.com/maps?q=' + air.coords[0] + ',' + air.coords[1], '_blank')}>
-                    <center>Directions</center>
+                    onClick={this.onTrackedClick(air.sn)}>
+                    <center>Watch Location</center>
                   </div>
                 </center>
               </Popup>

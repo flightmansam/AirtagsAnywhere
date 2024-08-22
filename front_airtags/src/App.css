@@ -26,8 +26,8 @@
 .button {
   background-color:cadetblue;
   color: white;
-  margin: 15px;
-  border-radius: 20px;
+  margin: 10px;
+  border-radius: 25px;
   font-family: Roboto;
   padding: 10px;
 }

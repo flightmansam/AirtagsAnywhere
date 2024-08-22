@@ -1,10 +1,12 @@
 const express = require('express')
 var haversine = require("haversine-distance");
 const fs = require('fs');
-var cors = require('cors')
+var cors = require('cors');
 const app = express()
 const port = 3890
 const HOURS_24_TO_MS = 1000 * 60 * 60 *24;
+const watchMovements = new Set(); //any serial number here will be watched to see if it has left it's last reported location and will send a telegram message if it has
+const alerts = new Set(); //a buffer to store telegram alerts for tracked items
 const history = {};
 /*
 format of history:
@@ -19,10 +21,10 @@ function getFindMyData() {
         const items_data = fs.readFileSync('Items.data', 'utf8');
         let parsed_data = JSON.parse(items_data);
         let items_filtered_data = parsed_data
-            .filter(item => item.productType && item.productType.type === "b389" &&
+            .filter(item => item.productType &&
             item.batteryStatus && item.address && item.address.formattedAddressLines &&
             item.location && item.location.latitude && 
-            item.location.longitude && item.location.timeStamp && item.role && item.role.emoji && 
+            item.location.longitude && item.location.timeStamp && item.role && 
             item.serialNumber)
             .map(item => {
                 return {
@@ -37,7 +39,7 @@ function getFindMyData() {
                     distance24Hours:distance24Hours(item.serialNumber),
                     date: new Date(item.location.timeStamp).toLocaleString(),
                     timeStamp: item.location.timeStamp,
-                    emote: item.role.emoji,
+                    emote: (item.role.emoji) ? item.role.emoji : "⚪️",
                     sn: item.serialNumber,
                     product: item.productType.type
                 }
@@ -70,6 +72,15 @@ function getFindMyData() {
         })
 
         const findMy_filtered_data = items_filtered_data.concat(devices_filtered_data);
+
+        // if any of the data has moved AND is in watchMovements, add to an alert sending buffer
+        findMy_filtered_data.forEach(air => {
+            if (watchMovements.has(air.sn)) {
+                if (air.distanceSinceLastReport > 100) alerts.add(air.sn)
+            }
+            
+        })
+
 
         storeFindMyArray(findMy_filtered_data)
 
@@ -131,12 +142,59 @@ function distance24Hours(deviceSN){
     return distance;
 }
 
+function sendAlerts(){
+    if (alerts.size > 0) {
+        console.log(alerts)
+    }
+}
+
+
+// get the set of all the devices being watched
+app.get('/watch', (req, res) => {
+    res.json(Array.from(watchMovements))
+});
+
+// get the set of all the devices being watched
+app.get('/watch/alerts', (req, res) => {
+    res.json(Array.from(alerts))
+});
+
+// toggle device watching
+app.get('/watch/toggle/:sn', (req, res) => {
+    
+    if (req.params['sn']) {
+        var sn = req.params['sn']
+        
+        if (sn in history) {
+            if (watchMovements.has(sn)) {
+                watchMovements.delete(sn);
+            } else {
+                watchMovements.add(sn);
+            }
+            res.send("1")
+            return
+        }
+        else {
+            res.end()
+        }
+    } else {
+        res.end()
+    } 
+})
+
+app.get('/watch/clear', (req, res) => {
+   watchMovements.clear()
+    res.send("1")
+})
+
 app.get('/json', (req, res) => {
     res.json(getFindMyData())
 })
+
 
 app.listen(port, () => {
     console.log(`App listening on port ${port}`)
 })
 
 setInterval(getFindMyData, 1000 * 60 * 15);
+setInterval(sendAlerts, 1000 * 60 * 5);
